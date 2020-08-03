@@ -1,0 +1,37 @@
+digraph Tree {
+node [shape=box, style="filled, rounded", color="black", fontname=helvetica] ;
+edge [fontname=helvetica] ;
+0 [label="M_DEBTINC <= 0.5\nsamples = 4768\nvalue = [3827, 941]\nclass = Good", fillcolor="#eba06a"] ;
+1 [label="IMP_DEBTINC <= 40.919\nsamples = 3747\nvalue = [3434, 313]\nclass = Good", fillcolor="#e78c4b"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="IMP_DELINQ <= 0.5\nsamples = 3269\nvalue = [3075, 194]\nclass = Good", fillcolor="#e78945"] ;
+1 -> 2 ;
+3 [label="IMP_CLAGE <= 182.08\nsamples = 2763\nvalue = [2648, 115]\nclass = Good", fillcolor="#e68642"] ;
+2 -> 3 ;
+4 [label="z_JOB_Other <= 0.5\nsamples = 1552\nvalue = [1454, 98]\nclass = Good", fillcolor="#e78946"] ;
+3 -> 4 ;
+5 [label="IMP_VALUE <= 94612.0\nsamples = 975\nvalue = [933, 42]\nclass = Good", fillcolor="#e68742"] ;
+4 -> 5 ;
+6 [label="samples = 477\nvalue = [448, 29]\nclass = Good", fillcolor="#e78946"] ;
+5 -> 6 ;
+7 [label="samples = 498\nvalue = [485, 13]\nclass = Good", fillcolor="#e6843e"] ;
+5 -> 7 ;
+8 [label="samples = 577\nvalue = [521, 56]\nclass = Good", fillcolor="#e88f4e"] ;
+4 -> 8 ;
+9 [label="IMP_YOJ <= 7.5\nsamples = 1211\nvalue = [1194, 17]\nclass = Good", fillcolor="#e5833c"] ;
+3 -> 9 ;
+10 [label="samples = 592\nvalue = [578, 14]\nclass = Good", fillcolor="#e6843e"] ;
+9 -> 10 ;
+11 [label="samples = 619\nvalue = [616, 3]\nclass = Good", fillcolor="#e5823a"] ;
+9 -> 11 ;
+12 [label="samples = 506\nvalue = [427, 79]\nclass = Good", fillcolor="#ea985e"] ;
+2 -> 12 ;
+13 [label="samples = 478\nvalue = [359, 119]\nclass = Good", fillcolor="#eeab7b"] ;
+1 -> 13 ;
+14 [label="IMP_CLAGE <= 168.317\nsamples = 1021\nvalue = [393, 628]\nclass = Bad", fillcolor="#b5daf5"] ;
+0 -> 14 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+15 [label="samples = 535\nvalue = [156, 379]\nclass = Bad", fillcolor="#8ac5f0"] ;
+14 -> 15 ;
+16 [label="samples = 486\nvalue = [237, 249]\nclass = Bad", fillcolor="#f5fafe"] ;
+14 -> 16 ;
+}
