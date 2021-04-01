@@ -1,0 +1,328 @@
+---
+title: "final_Tsouprakos"
+output:
+  html_document:
+    df_print: paged
+---
+
+ 
+
+```{r setup, include=FALSE}
+# DO NOT ADD OR REVISE CODE HERE
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+knitr::opts_knit$set(root.dir = normalizePath("/Users/zachtsouprakos/Documents/MSDS/MSDS-411/Module_10/"))
+```
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(repr)
+library(dplyr)
+library(corrplot)
+library(cluster)
+library(useful)
+library(Hmisc)
+library(HSAUR)
+library(MVA)
+library(HSAUR2)
+library(fpc)
+library(mclust)
+library(lattice)
+library(car)
+library(ggplot2)
+library(gridExtra)
+library(maptree)
+library(dendextend)
+library(cluster) 
+
+```
+
+```{r}
+wine_dd <- read_excel('DataDictionary_WineSales.xlsx')
+wine_dd <- wine_dd[c('VARIABLE NAME','DEFINITION')]
+wine_dd <- na.omit(wine_dd)
+wine_dd
+```
+
+
+```{r}
+wine <- read_excel('WineSales.xlsx')
+as.data.frame(t(head(wine)))
+wine_desc <- describe(wine[,-c(1,2)])
+cols <- names(wine_desc)
+#wine_desc
+```
+
+
+
+```{r}
+
+
+for (col in cols) {
+  each_wine <- wine_desc[[col]]
+  if (each_wine$counts['missing'] == 0) next
+  cat("\n", col, ", Missing Values: ", each_wine$counts['missing'])
+}
+```
+
+
+```{r warning=FALSE}
+clean_wine = wine[,-c(1,2)]
+
+for (col in cols) {
+  each_wine <- wine_desc[[col]]
+  
+  # Check if column has missing values
+  # If so, print column name and median of column, not including NAs
+  # Create imputation column where we used the median
+  # Drop original column
+  if (each_wine$counts['missing'] > 0) {
+    cat("Median for", col, "is: ", median(clean_wine[[col]], na.rm = TRUE), "\n")
+    IMP = paste0("IMP_",col)
+    clean_wine[IMP] = clean_wine[[col]]
+    
+    # For each newly created column, impute missing values with the median
+    for (i in seq(1, nrow(clean_wine))) {
+      if (is.na(clean_wine[[IMP]][i])) {
+        clean_wine[[IMP]][i] = median(clean_wine[[col]], na.rm = TRUE)
+      }
+    }
+    clean_wine = select(clean_wine, -c(col))
+  }
+}
+
+
+# Confirm all nulls have been updated
+wine_desc <- describe(clean_wine)
+cols <- names(wine_desc)
+
+cat("\nConfirming all features have zero missing values: \n")
+for (col in cols) {
+  each_wine <- wine_desc[[col]]
+  cat("\n", col, ", Missing Values: ", each_wine$counts['missing'])
+}
+
+
+
+```
+
+#### Exploratory Data Analysis
+
+ - Correlation Plot shows that variables are not correlated to one another alluding to the idea that PCA might not be particularly useful. Latent relationships may still exist, lets see if we can use PCA.
+
+```{r}
+clean_wine.cor <- cor(cbind(wine$TARGET, clean_wine))
+corrplot(clean_wine.cor, method = "circle",tl.col="black")
+
+
+```
+
+```{r}
+apply(clean_wine,MARGIN=2,FUN=median)
+head(clean_wine)
+
+cols = colnames(clean_wine[,7:14])
+
+par(mfrow=c(2,2))
+for (col in cols) {
+  hist(clean_wine[[col]], main = col, xlab = "")
+}
+hist(wine$TARGET, main = "Sales", xlab= "")
+```
+
+#### PCA Attempt
+
+```{r}
+# scale values between 0 and 1 
+scaled.wine <- apply(clean_wine, MARGIN = 2, FUN = function(X) (X - min(X, na.rm = TRUE)) / diff(range(X, na.rm = TRUE, na.rm = TRUE)))
+
+# Run PCA, do not need to center and scale, already done
+wine.pca <- prcomp(scaled.wine, center = FALSE, scale. = FALSE)
+summary(wine.pca)
+
+
+# Visualize Scree Plot
+scree.values <- (wine.pca$sdev^2)/sum(wine.pca$sdev^2);
+plot(scree.values,xlab='Number of Components',ylab='',type='l',lwd=2)
+points(scree.values,lwd=2,cex=1.5)
+title('Scree Plot')
+plot(wine.pca)
+
+variance.values <- cumsum(wine.pca$sdev^2)/sum(wine.pca$sdev^2)
+
+plot(variance.values,xlab='Number of Components',ylab='',type='l',lwd=2)
+
+library(factoextra)
+fviz_pca_var(wine.pca)
+```
+
+
+ - Scale the data accordingly, remove necessary variables
+ 
+```{r}
+
+# remove stars and label appeal
+clean_wine.pre <- select(clean_wine, -c(LabelAppeal, IMP_STARS))
+
+# scale values between 0 and 1 
+scaled.wine <- apply(clean_wine.pre, MARGIN = 2, FUN = function(X) (X - min(X, na.rm = TRUE)) / diff(range(X, na.rm = TRUE, na.rm = TRUE)))
+
+# Run PCA, do not need to center and scale, already done
+wine.pca <- prcomp(scaled.wine, center = FALSE, scale. = FALSE)
+summary(wine.pca)
+
+
+# Visualize Scree Plot
+scree.values <- (wine.pca$sdev^2)/sum(wine.pca$sdev^2);
+plot(scree.values,xlab='Number of Components',ylab='',type='l',lwd=2)
+points(scree.values,lwd=2,cex=1.5)
+title('Scree Plot')
+plot(wine.pca)
+
+variance.values <- cumsum(wine.pca$sdev^2)/sum(wine.pca$sdev^2)
+
+plot(variance.values,xlab='Number of Components',ylab='',type='l',lwd=2)
+
+library(factoextra)
+fviz_pca_var(wine.pca)
+
+
+```
+
+
+ - The scree plot, along with the visuals highlighting explained variance indicates that the first two PCAs can represent most of our data set (~94%)
+
+
+#### Below we take a look at some elbow plots to give us an idea of the appropriate amount of clusters needed
+
+```{r}
+# Grab first 2 principal components scores
+wine_pca <- wine.pca$x[,1:2]
+
+# accuracy - Between % ss
+subdat <- wine_pca
+# Elbow plot
+wssplot <- function(subdat, nc=30, seed=1234) {
+  wss <- (nrow(subdat)-1)*sum(apply(subdat,2,var))
+  for (i in 2:nc) {
+    set.seed(seed)
+    k <- kmeans(subdat, centers=i,iter.max = 500, , algorithm = "MacQueen")
+    wss[i] <- sum(kmeans(subdat, centers=i,iter.max = 500)$withinss)}
+    rs <- (wss[1] - wss)/wss[1]
+    plot(1:nc, wss, type="b", xlab="Number of Clusters",
+         ylab="Within groups sum of squares")
+    plot(1:nc, rs, type="b", xlab="Number of Clusters",
+       ylab="% of Between SS")
+    } 
+
+wssplot(subdat)
+
+fviz_nbclust(subdat, kmeans, method='silhouette', k.max = 15)
+
+```
+ 
+ - the above shows that changes in sum of square differences begins to 'elbow' around 3 & 5 clusters, while becoming relatively consistent around 10
+
+
+
+#### We will also leverage brute force calculation to test accuracy as cluster count increases 
+
+```{r}
+
+# Brute force check which # of clusters results in most appropriate accuracy
+for (i in seq(1,10)) {
+  set.seed(123)
+  wine.kmean <- kmeans(wine_pca, i, iter.max = 500, algorithm = "MacQueen")
+  accuracy <- wine.kmean$betweenss/wine.kmean$totss
+  cat("Accuracy for", i, "clusters: ", round((accuracy*100)),"%\n")
+}
+
+# Create and fit kmeans model
+set.seed(123)
+k <- 10
+wine.kmean <- kmeans(wine_pca, k, iter.max = 500)
+
+# See how many observations per cluster
+df.count <- as.data.frame(cbind(wine.kmean$cluster, wine$INDEX))
+colnames(df.count) <- c("cluster","index")
+df.count %>% count(cluster)
+
+```
+
+
+ - we see that around 7 clusters, differences begin to drop significantly. I chose 10 clusters as I felt comfortable with the accuracy score
+ 
+ 
+ 
+#### Below we visualize the 10 clusters leverage the first two principal components which explain around 94% of variance within our data set
+
+```{r}
+
+library(ggpubr)
+library(factoextra)
+
+# gather coordinates
+wine.km.viz <- as.data.frame(get_pca_ind(wine.pca)$coord)
+
+# Bring cluster assignments back to each record
+wine.km.viz$cluster <- factor(wine.kmean$cluster)
+head(wine.km.viz)
+
+# Check the % variance explained by each princpal component
+ev <- round(get_eigenvalue(wine.pca), 2)
+variance.percent <- ev$variance.percent
+head(ev)
+
+# visualize the first two PCAs 
+ggscatter(
+  wine.km.viz, x = "Dim.1", y = "Dim.2", 
+  color = "cluster", palette = "npg", ellipse = TRUE, ellipse.type = "convex",
+  size = 1.5,  legend = "right", ggtheme = theme_classic(),
+  xlab = paste0("PCA1 (", variance.percent[1], "% Variance)" ),
+  ylab = paste0("PCA2 (", variance.percent[2], "% Variance)" )
+) +
+  stat_mean(aes(color = cluster), size = 6)
+
+```
+
+
+```{r}
+
+# Bring clusters, index, and target back to the clean wine data set for further analysis
+wine.final <- cbind(wine[,c(1,2)], wine.kmean$cluster, clean_wine)
+
+columns <- colnames(wine.final) 
+columns[3] <- "Cluster"
+colnames(wine.final) <- columns
+
+by_cluster <- wine.final %>% group_by(Cluster)
+
+by_cluster %>% summarise(
+  n = n(),
+  stars = mean(IMP_STARS),
+  sales = mean(TARGET),
+  labelAppeal = mean(LabelAppeal),
+  alcohol = mean(IMP_Alcohol),
+  acid = mean(AcidIndex),
+  sulfates = mean(IMP_Sulphates)
+)
+
+#write.csv(wine.final, "final_wine.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
