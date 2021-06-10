@@ -1,0 +1,65 @@
+After you create SaleCo database using SQLIte, do the following from sqlite3 shell:
+
+
+First, turn column headers on for the output by executing the following command:
+
+.header on
+
+
+
+1. Write a query to count the number of invoices.
+
+SELECT COUNT(*) FROM INVOICE;
+
+
+2. Write a query to count the number of customers with a customer balance over $500.
+
+
+Write your SQL statement and provide its output
+
+
+ 
+
+3. Generate a listing of all purchases made by the customers
+
+SELECT	INVOICE.CUS_CODE, INVOICE.INV_NUMBER, INVOICE.INV_DATE, 
+	PRODUCT.P_DESCRIPT, LINE.LINE_UNITS, LINE.LINE_PRICE
+FROM	CUSTOMER, INVOICE, LINE, PRODUCT
+WHERE	CUSTOMER.CUS_CODE = INVOICE.CUS_CODE
+AND	INVOICE.INV_NUMBER = LINE.INV_NUMBER 
+AND	PRODUCT.P_CODE = LINE.P_CODE
+ORDER BY	INVOICE.CUS_CODE, INVOICE.INV_NUMBER, PRODUCT.P_DESCRIPT;
+
+
+
+4. Generate the listing of customer purchases, including the subtotals for each of the invoice line numbers
+
+
+Write your SQL statement and provide its output
+
+
+
+
+5. List the balance characteristics of the customers who have made
+purchases during the current invoice cycle—that is, for the customers
+who appear in the INVOICE table.
+
+
+
+	Write your SQL statement and provide its output
+
+
+
+6. Find the listing of customers who did not make purchases during the invoicing period.
+
+
+	Write your SQL statement and provide its output
+
+
+
+
+7. Create a query to produce the summary of the value of products currently in inventory.
+(Note that the value of each product is produced by the multiplication of the units currently in inventory and the unit price )
+
+
+	Write your SQL statement and provide its output
